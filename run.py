@@ -1,4 +1,12 @@
+from datetime import date
+
+from core.models import AccountState, ActionMode, MarketFilterResult, MarketState
 from strategies.stock_engine import StockEngine
+from tests.helpers import (
+    make_bull_df,
+    make_premium_pullback_df,
+    make_premium_restrength_df,
+)
 
 risk_config = {
     "max_daily_loss_pct": 1.0,
@@ -47,8 +55,50 @@ def main():
 
     engine = StockEngine(stock_config, risk_config)
 
-    print("StockEngine 생성 성공")
-    print(type(engine).__name__)
+    benchmark_df = make_bull_df(n=100, start_price=380.0, seed=10)
+
+    universe_data = {
+        "NVDA": make_premium_pullback_df(),
+        "META": make_premium_restrength_df(),
+    }
+
+    market_filter = MarketFilterResult(
+        market_state=MarketState.GOOD,
+        action_mode=ActionMode.AGGRESSIVE,
+        exposure_cap=100,
+        pipeline_halt=False,
+        halt_reason=None,
+        qqq_signal="BULL",
+        spy_signal="CONFIRM",
+        vix_signal="LOW",
+        analysis_date=date(2025, 1, 15),
+    )
+
+    account = AccountState(
+        total_capital=100_000.0,
+        daily_pnl_pct=0.003,
+        weekly_pnl_pct=0.008,
+        monthly_pnl_pct=0.015,
+    )
+
+    weekly_pool, candidates = engine.run(
+        universe_data=universe_data,
+        benchmark_df=benchmark_df,
+        market_filter=market_filter,
+        account=account,
+        analysis_date=market_filter.analysis_date,
+        force_refresh=True,
+    )
+
+    print("StockEngine.run() 실행 성공")
+    print(f"weekly eligible count: {len(weekly_pool.eligible_pool)}")
+    print(f"candidate count: {len(candidates)}")
+
+    for c in candidates:
+        print(
+            f"{c.ticker} | class={c.entry_class.name} | "
+            f"gate={c.gate_result} | rs={c.rs_score}"
+        )
 
 if __name__ == "__main__":
     main()
