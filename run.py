@@ -1,13 +1,91 @@
 from datetime import date
-
+import numpy as np
 from core.models import AccountState, ActionMode, MarketFilterResult, MarketState
 from strategies.stock_engine import StockEngine
-from tests.helpers import (
-    make_bull_df,
-    make_premium_pullback_df,
-    make_premium_restrength_df,
-)
+from data.data_loader import generate_synthetic_ohlcv
+def make_bull_df(n: int = 90, start_price: float = 100.0, seed: int = 42):
+    return generate_synthetic_ohlcv(
+        "TEST",
+        n_days=n,
+        start_price=start_price,
+        trend=0.003,
+        volatility=0.012,
+        seed=seed,
+    )
+def make_premium_pullback_df(seed: int = 99):
+    n = 90
+    np.random.seed(seed)
 
+    closes = np.zeros(n)
+    closes[0] = 200.0
+    for i in range(1, n - 20):
+        closes[i] = closes[i - 1] * (1 + np.random.normal(0.003, 0.008))
+
+    peak = float(closes[n - 21])
+
+    for i in range(n - 20, n - 5):
+        progress = (i - (n - 20)) / 15
+        closes[i] = peak * (1 - 0.06 * progress)
+
+    for i in range(n - 5, n):
+        closes[i] = closes[n - 6] * (1 + 0.003 * (i - (n - 6)))
+
+    closes = np.maximum(closes, 1.0)
+
+    df = generate_synthetic_ohlcv(
+        "NVDA",
+        n_days=n,
+        start_price=float(closes[0]),
+        trend=0.0,
+        volatility=0.0,
+        seed=seed,
+    )
+    df["close"] = np.round(closes, 2)
+
+    volumes = np.full(n, 1_200_000.0)
+    for i in range(n - 20, n):
+        volumes[i] = 700_000.0 + np.random.randint(0, 50_000)
+    df["volume"] = volumes
+
+    return df
+def make_premium_restrength_df(seed: int = 77):
+    n = 90
+    np.random.seed(seed)
+
+    closes = np.zeros(n)
+    closes[0] = 150.0
+    for i in range(1, n - 15):
+        closes[i] = closes[i - 1] * (1 + np.random.normal(0.002, 0.010))
+
+    bottom = float(closes[n - 16])
+
+    for i in range(n - 15, n - 5):
+        closes[i] = bottom * (1 - 0.06 * (i - (n - 15)) / 10)
+
+    recovery_start = float(closes[n - 6])
+    for i in range(n - 5, n):
+        closes[i] = recovery_start * (1 + 0.008 * (i - (n - 6)))
+
+    closes = np.maximum(closes, 1.0)
+
+    df = generate_synthetic_ohlcv(
+        "META",
+        n_days=n,
+        start_price=float(closes[0]),
+        trend=0.0,
+        volatility=0.0,
+        seed=seed,
+    )
+    df["close"] = np.round(closes, 2)
+
+    volumes = np.full(n, 1_000_000.0)
+    for i in range(n - 15, n - 5):
+        volumes[i] = 600_000.0
+    for i in range(n - 5, n):
+        volumes[i] = 1_600_000.0
+    df["volume"] = volumes
+
+    return df
 risk_config = {
     "max_daily_loss_pct": 1.0,
     "max_weekly_loss_pct": 2.0,
