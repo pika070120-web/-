@@ -95,11 +95,15 @@ def main():
     print(f"candidate count: {len(candidates)}")
 
     for c in candidates:
-         print(
-                f"{c.ticker} | class={c.entry_class.name} | "
-              f"rs={c.rs_score} | fail_gate={c.gate_result.failure_gate} | "
-                f"reason={c.gate_result.failure_reason}"
-            )
-
+        print(
+            f"{c.ticker} | class={c.entry_class.name} | rs={c.rs_score} | "
+            f"market={c.gate_result.gate1_market} | "
+            f"rs_gate={c.gate_result.gate2_rs} | "
+            f"pullback={c.gate_result.gate3_pullback} | "
+            f"restrength={c.gate_result.gate4_restrength} | "
+            f"risk={c.gate_result.gate5_risk} | "
+            f"fail_gate={c.gate_result.failure_gate} | "
+            f"reason={c.gate_result.failure_reason}"
+        )
 if __name__ == "__main__":
     main()
