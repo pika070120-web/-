@@ -4,13 +4,17 @@ from core.config_loader import MARKET_CONFIG, RISK_CONFIG, STOCK_CONFIG
 from core.models import AccountState
 from data.runtime_yf_loader import RuntimeYFinanceLoader
 from filters.market_filter import MarketFilter
+from filters.etf_engine import ETFEngine
 from strategies.stock_engine import StockEngine
+from reports.report_generator import ReportGenerator
 
 
 def main():
     loader = RuntimeYFinanceLoader()
     market_filter = MarketFilter(MARKET_CONFIG)
     stock_engine = StockEngine(STOCK_CONFIG, RISK_CONFIG)
+    etf_engine = ETFEngine(MARKET_CONFIG, RISK_CONFIG)
+    reporter = ReportGenerator()
 
     analysis_date = date.today()
     start_date = analysis_date - timedelta(days=180)
@@ -23,10 +27,12 @@ def main():
         print("benchmark data load failed")
         return
 
+    mf_result = market_filter.run(qqq_df, spy_df, vix_df, analysis_date)
+
     tickers = loader.get_ndx100_components()
     universe_data = loader.load_multiple(tickers, start_date, analysis_date)
-
-    mf_result = market_filter.run(qqq_df, spy_df, vix_df, analysis_date)
+    universe_data["QQQ"] = qqq_df
+    universe_data["SPY"] = spy_df
 
     account = AccountState(
         total_capital=100_000.0,
@@ -44,13 +50,20 @@ def main():
         force_refresh=True,
     )
 
-    print(f"market_state={mf_result.market_state}")
-    print(f"pipeline_halt={mf_result.pipeline_halt}")
-    print(f"weekly_pool_size={len(weekly_pool.eligible_pool)}")
-    print(f"candidate_count={len(candidates)}")
+    etf_candidates = etf_engine.run(
+        universe_data=universe_data,
+        market_filter=mf_result,
+        account=account,
+        analysis_date=analysis_date,
+    )
 
-    for c in candidates[:5]:
-        print(f"{c.ticker} | class={c.entry_class.name} | rs={c.rs_score}")
+    report = reporter.generate(
+        market_filter=mf_result,
+        stock_candidates=candidates,
+        etf_candidates=etf_candidates,
+        analysis_date=analysis_date,
+    )
+    print(report)
 
 
 if __name__ == "__main__":
