@@ -62,6 +62,7 @@ def main():
         stock_candidates=candidates,
         etf_candidates=etf_candidates,
         analysis_date=analysis_date,
+        universe_data=universe_data,
     )
     print(report)
 
