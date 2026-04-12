@@ -1,16 +1,5 @@
 """
 portfolio/portfolio_manager.py  (v1.6)
-
-Fix 1: sync_rs_scores(rs_map) 추가.
-  - 파이프라인 Step 3(StockEngine) 직후 호출.
-  - 포트폴리오 보유 종목의 rs_score를 당일 StockEngine 결과로 갱신.
-  - ReplacementEvaluator가 실행되기 전에 반드시 호출되어야 함.
-
-Fix 2: ExecutedEntry 히스토리 영속화.
-  - confirm_executions() 호출 시 _executed_today 리스트에 추가.
-  - save_state()에서 executed_entries 직렬화.
-  - _load_state()에서 당일분만 복원 (익일에는 초기화).
-  - executed_tickers_today 프로퍼티: PriorityEngine에 전달해 same-day 재제안 차단.
 """
 
 import json
@@ -124,10 +113,6 @@ def _merge_or_add_position(
             )
         existing.quantity = new_qty
         existing.current_price = price
-        logger.info(
-            f"[PortfolioManager] Merged {ticker}: qty {old_qty:.4f} → {new_qty:.4f}, "
-            f"avg_entry=${existing.entry_price:.2f}"
-        )
     else:
         positions.append(Position(
             ticker=ticker,
@@ -136,9 +121,6 @@ def _merge_or_add_position(
             quantity=shares,
             entry_date=entry_date,
         ))
-        logger.info(
-            f"[PortfolioManager] New position {ticker}: {shares:.4f}sh @ ${price:.2f}"
-        )
 
 
 class PortfolioManager:
@@ -168,11 +150,6 @@ class PortfolioManager:
 
     @property
     def executed_tickers_today(self) -> Set[str]:
-        """
-        Set of tickers confirmed as executed on today's date.
-        Passed to PriorityEngine.run() to prevent same-day re-proposal
-        of already-executed tickers in new_entries or replacement incoming.
-        """
         return {e.ticker for e in self._executed_today}
 
     def initialize(self, total_capital: float, today: date) -> None:
@@ -181,36 +158,15 @@ class PortfolioManager:
         else:
             self._portfolio = PortfolioState(total_capital=total_capital, cash=total_capital)
             self._account = AccountState(total_capital=total_capital)
-            logger.info(f"[PortfolioManager] Fresh state, capital=${total_capital:,.0f}")
 
         if self._counter.analysis_date != today:
-            old = self._counter.analysis_date
             self._counter = DailyEntryCounter(analysis_date=today)
             self._executed_today = []
-            logger.info(f"[PortfolioManager] Counter + executed history reset: {old} → {today}")
 
     def sync_rs_scores(self, rs_map: Dict[str, float]) -> None:
-        """
-        Update portfolio positions' rs_score from today's StockEngine output.
-        Call this AFTER StockEngine.run() and BEFORE PriorityEngine.run().
-        """
-        updated = 0
         for pos in self._portfolio.positions:
             if pos.ticker in rs_map:
-                old_score = pos.rs_score
                 pos.rs_score = rs_map[pos.ticker]
-                if old_score != pos.rs_score:
-                    logger.info(
-                        f"[PortfolioManager] rs_score synced: "
-                        f"{pos.ticker} {old_score:.2f} → {pos.rs_score:.2f}"
-                    )
-                    updated += 1
-
-        logger.info(
-            f"[PortfolioManager] sync_rs_scores: "
-            f"{updated} positions updated, "
-            f"{len(self._portfolio.positions) - updated} unchanged (not in today's pool)"
-        )
 
     def update_positions(self, price_data: Dict[str, pd.DataFrame]) -> None:
         for pos in self._portfolio.positions:
@@ -220,22 +176,13 @@ class PortfolioManager:
                 pos.holding_status = _evaluate_holding_status(pos, df, self._cfg)
 
     def confirm_executions(self, executed: List[ExecutedEntry]) -> None:
-        """
-        Record broker-confirmed trades. The ONLY path that updates DailyEntryCounter.
-        Also appends each ExecutedEntry to _executed_today.
-        """
         for entry in executed:
             if entry.is_replacement:
                 if entry.outgoing_ticker:
                     for pos in self._portfolio.positions:
                         if pos.ticker == entry.outgoing_ticker:
                             pos.quantity = round(pos.quantity * 0.5, 4)
-                            logger.info(
-                                f"[PortfolioManager] Replacement: "
-                                f"{pos.ticker} reduced to {pos.quantity:.4f}sh (50%)"
-                            )
                             break
-
                 _merge_or_add_position(
                     self._portfolio.positions,
                     ticker=entry.ticker,
@@ -244,7 +191,6 @@ class PortfolioManager:
                     entry_date=entry.execution_date,
                 )
                 self._counter.replacements_today += 1
-
             else:
                 _merge_or_add_position(
                     self._portfolio.positions,
@@ -257,16 +203,7 @@ class PortfolioManager:
                     self._counter.strong_entries_today += 1
                 else:
                     self._counter.general_entries_today += 1
-
             self._executed_today.append(entry)
-
-        logger.info(
-            f"[PortfolioManager] Counter: "
-            f"strong={self._counter.strong_entries_today}, "
-            f"general={self._counter.general_entries_today}, "
-            f"replacements={self._counter.replacements_today}. "
-            f"Executed today: {list(self.executed_tickers_today)}"
-        )
 
     def save_state(self) -> None:
         if self._state_file is None:
@@ -300,16 +237,12 @@ class PortfolioManager:
             self._state_file.parent.mkdir(parents=True, exist_ok=True)
             with open(self._state_file, "w") as f:
                 json.dump(data, f, indent=2)
-            logger.info(
-                f"[PortfolioManager] Saved: {len(self._portfolio.positions)} positions, "
-                f"{len(self._executed_today)} executed entries"
-            )
         except Exception as exc:
             logger.error(f"[PortfolioManager] Save failed: {exc}")
 
     def _load_state(self, fallback_capital: float, today: date) -> None:
         try:
-            with open(self._state_file, "r") as f:  # type: ignore[arg-type]
+            with open(self._state_file, "r") as f:
                 data = json.load(f)
 
             acct = data.get("account", {})
@@ -353,20 +286,12 @@ class PortfolioManager:
                         entry = _deserialize_executed_entry(ed)
                         if entry.execution_date == today:
                             self._executed_today.append(entry)
-                    except Exception as exc:
-                        logger.warning(f"[PortfolioManager] Bad executed_entry skipped: {exc}")
-                logger.info(
-                    f"[PortfolioManager] Restored counter + {len(self._executed_today)} "
-                    f"executed entries for {today}"
-                )
+                    except Exception:
+                        pass
             else:
                 self._counter = DailyEntryCounter(analysis_date=saved_date)
                 self._executed_today = []
 
-            logger.info(
-                f"[PortfolioManager] Loaded: {len(positions)} positions, "
-                f"capital=${self._account.total_capital:,.0f}"
-            )
         except Exception as exc:
             logger.error(f"[PortfolioManager] Load failed: {exc}. Using defaults.")
             self._account = AccountState(total_capital=fallback_capital)

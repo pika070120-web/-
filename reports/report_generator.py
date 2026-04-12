@@ -4,6 +4,7 @@ import pandas as pd
 from core.models import (
     MarketFilterResult, MarketState,
     StockCandidate, ETFCandidate, EntryClass, ETFEntryClass,
+    Position, HoldingStatus,
 )
 
 
@@ -39,6 +40,15 @@ class ReportGenerator:
             return f"{min(5, cap)}%"
         return "0%"
 
+    def _holding_label(self, status: HoldingStatus) -> str:
+        mapping = {
+            HoldingStatus.STRONG_HOLD: "강한 유지 ✅",
+            HoldingStatus.HOLD: "유지",
+            HoldingStatus.PARTIAL_REDUCE: "일부 축소 ⚠️",
+            HoldingStatus.FULL_EXIT: "전량 정리 ❌",
+        }
+        return mapping.get(status, "유지")
+
     def generate(
         self,
         market_filter: MarketFilterResult,
@@ -46,8 +56,10 @@ class ReportGenerator:
         etf_candidates: List[ETFCandidate],
         analysis_date: date,
         universe_data: Dict[str, pd.DataFrame] = None,
+        positions: List[Position] = None,
     ) -> str:
         universe_data = universe_data or {}
+        positions = positions or []
         lines = []
 
         conclusion = self._conclusion(market_filter, stock_candidates, etf_candidates)
@@ -77,7 +89,6 @@ class ReportGenerator:
             lines.append(f"    매수가  : ${price}")
             lines.append(f"    손절가  : ${stop}")
             lines.append(f"    권장비중: {size}")
-
         if ineligible:
             lines.append("  [탈락 종목]")
             for c in ineligible:
@@ -101,6 +112,15 @@ class ReportGenerator:
             for e in etf_rejected:
                 lines.append(f"  ✕ {e.ticker} | Gate{e.gate_result.failure_gate} | {e.gate_result.failure_reason}")
 
+        lines.append("\n[보유 종목 관리]")
+        if not positions:
+            lines.append("  현재 보유 종목 없음")
+        for p in positions:
+            label = self._holding_label(p.holding_status)
+            pnl = (p.current_price - p.entry_price) / p.entry_price * 100
+            pnl_str = f"+{pnl:.1f}%" if pnl >= 0 else f"{pnl:.1f}%"
+            lines.append(f"  {p.ticker} | {label} | 수익: {pnl_str} | RS={p.rs_score:.2f}")
+
         lines.append("\n[리스크 상태]")
         if market_filter.pipeline_halt:
             lines.append("  ❌ 신규 진입 금지 (시장 관망)")
@@ -110,6 +130,7 @@ class ReportGenerator:
         lines.append("\n[실행 요약]")
         lines.append(f"  개별주 진입 후보: {len(eligible)}건")
         lines.append(f"  ETF 진입 후보  : {len(etf_approved)}건")
+        lines.append(f"  보유 종목 수   : {len(positions)}개")
         lines.append(f"  최대 노출 한도 : {market_filter.exposure_cap}%")
         lines.append("=" * 55)
 
