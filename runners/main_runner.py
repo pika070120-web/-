@@ -87,6 +87,8 @@ def main():
         universe_data=universe_data,
         positions=portfolio_manager.portfolio.positions,
     )
+    import sys
+    sys.stdout.reconfigure(encoding='utf-8')
     print(report)
 
 
