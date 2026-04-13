@@ -108,32 +108,32 @@ class RuntimeYFinanceLoader:
         return out
 
     def get_ndx100_components(self) -> list[str]:
-        return [
-            "AAPL",
-            "MSFT",
-            "NVDA",
-            "AMZN",
-            "META",
-            "GOOGL",
-            "GOOG",
-            "TSLA",
-            "COST",
-            "NFLX",
-            "AMD",
-            "ADBE",
-            "PEP",
-            "CSCO",
-            "INTC",
-            "QCOM",
-            "AMGN",
-            "TXN",
-            "INTU",
-            "HON",
-            "AMAT",
-            "ISRG",
-            "SBUX",
-            "ADI",
-            "MDLZ",
-            "ADP",
-            "GILD",
-        ]
+            return [
+        # 빅테크
+        "AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "GOOG", "TSLA",
+        "AVGO", "PLTR",
+        # 반도체
+        "AMD", "QCOM", "AMAT", "TXN", "MU", "LRCX", "KLAC", "MRVL",
+        "ADI", "NXPI", "MCHP", "SNPS", "CDNS", "INTC", "ARM", "SMCI",
+        "MPWR", "STX", "WDC",
+        # 소프트웨어/클라우드
+        "ADBE", "INTU", "CRWD", "PANW", "DDOG", "ZS", "WDAY", "TEAM",
+        "FTNT", "OKTA", "CSGP",
+        # 소비자/플랫폼
+        "NFLX", "COST", "SBUX", "PYPL", "EBAY", "BKNG", "ABNB", "CHTR",
+        "EXPE", "TCOM", "TTWO", "EA",
+        # 헬스케어/바이오
+        "AMGN", "GILD", "VRTX", "ISRG", "DXCM", "REGN", "IDXX", "ALGN",
+        "GEHC", "BMRN", "ALNY", "INSM",
+        # 산업/기타
+        "HON", "PCAR", "CTAS", "ORLY", "ODFL", "FAST", "CPRT", "ROST",
+        "PAYX", "ADP", "VRSK", "CEG", "FSLR", "ENPH",
+        # 소비재/필수
+        "PEP", "MDLZ", "MNST", "KDP", "CCEP",
+        # 통신/미디어
+        "CSCO", "NTAP",
+        # 해외상장 NDX
+        "ASML", "SHOP", "FER",
+        # 기타
+        "FANG", "DLTR", "CTSH",
+    ]
