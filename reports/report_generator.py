@@ -76,6 +76,10 @@ class ReportGenerator:
         lines.append(f"  해석     : {self._market_comment(market_filter)}")
 
         lines.append("\n[개별주 후보]")
+        lines.append(f"  [주간 강종목 풀 상위 10개]")
+        for c in sorted(stock_candidates, key=lambda x: x.pool_rank):
+            lines.append(f"  #{c.pool_rank} {c.ticker} | RS={c.rs_score:.2f}")
+        lines.append("")
         eligible = [c for c in stock_candidates if c.entry_class != EntryClass.INELIGIBLE]
         ineligible = [c for c in stock_candidates if c.entry_class == EntryClass.INELIGIBLE]
         if not eligible:
@@ -92,7 +96,7 @@ class ReportGenerator:
         if ineligible:
             lines.append("  [탈락 종목]")
             for c in ineligible:
-                lines.append(f"  ✕ {c.ticker} | Gate{c.gate_result.failure_gate} | {c.gate_result.failure_reason}")
+                lines.append(f"  X {c.ticker} | Gate{c.gate_result.failure_gate} | {c.gate_result.failure_reason}")
 
         lines.append("\n[ETF 후보]")
         etf_approved = [e for e in etf_candidates if e.entry_class == ETFEntryClass.APPROVED]
@@ -110,7 +114,7 @@ class ReportGenerator:
         if etf_rejected:
             lines.append("  [탈락 ETF]")
             for e in etf_rejected:
-                lines.append(f"  ✕ {e.ticker} | Gate{e.gate_result.failure_gate} | {e.gate_result.failure_reason}")
+                lines.append(f"  X {e.ticker} | Gate{e.gate_result.failure_gate} | {e.gate_result.failure_reason}")
 
         lines.append("\n[보유 종목 관리]")
         if not positions:
