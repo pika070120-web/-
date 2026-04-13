@@ -136,4 +136,7 @@ class RuntimeYFinanceLoader:
         "ASML", "SHOP", "FER",
         # 기타
         "FANG", "DLTR", "CTSH",
+        # NDX 추가 보완
+        "LIN", "PDD", "MELI", "LULU", "MNST", "VRSK",
+        "TTD", "DASH", "DXCM", "GEHC",
     ]
