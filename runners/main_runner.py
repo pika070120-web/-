@@ -15,6 +15,16 @@ PORTFOLIO_CFG = {
     "strong_hold_rs_threshold": 5.0,
 }
 
+# 백테스트 확정 파라미터
+EXECUTION_CFG = {
+    "profit_target_pct": 6.5,      # 수익 목표
+    "max_hold_days": 20,           # 최대 보유일
+    "atr_stop_multiple": 1.5,      # ATR 손절 배수
+    "cooldown_loss_pct": -10.0,    # 쿨다운 트리거 손실
+    "cooldown_days": 5,            # 쿨다운 기간
+    "max_monthly_entries": 3,      # 종목당 월 최대 진입
+}
+
 
 def main():
     loader = RuntimeYFinanceLoader()
