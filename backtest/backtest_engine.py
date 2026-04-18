@@ -261,7 +261,7 @@ class VirtualPortfolio:
             if pnl_pct < -8.0:
                 self.close_position(pos, close, trade_date, "structure_break")
                 exited.append(pos.ticker)
-            elif pnl_pct >= 6.0:
+            elif pnl_pct >= 6.5:
                 self.close_position(pos, close, trade_date, "profit_target")
                 exited.append(pos.ticker)
             elif hold_days >= 20:
