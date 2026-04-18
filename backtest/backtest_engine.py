@@ -136,6 +136,7 @@ class VirtualPortfolio:
         self.positions: List[BTPosition] = []
         self.trade_log: List[Dict[str, Any]] = []
         self.peak_value = initial_capital
+        self._cooldown: Dict[str, date] = {}  # ticker → 재진입 금지 해제일
 
     @property
     def total_value(self) -> float:
@@ -156,6 +157,10 @@ class VirtualPortfolio:
         if len(self.positions) >= self.MAX_POSITIONS:
             return False
         if price <= 0:
+            return False
+        # 쿨다운 체크
+        cooldown_end = self._cooldown.get(ticker)
+        if cooldown_end is not None and trade_date < cooldown_end:
             return False
 
         size_pct = (
@@ -206,6 +211,11 @@ class VirtualPortfolio:
             "reason": reason,
             "hold_days": (trade_date - pos.entry_date).days,
         })
+        # 큰 손실 발생 시 5일 쿨다운
+        if pnl_pct <= -12.0:
+            from datetime import timedelta
+            self._cooldown[pos.ticker] = trade_date + timedelta(days=5)
+            logger.debug(f"[BT] COOLDOWN {pos.ticker} until {self._cooldown[pos.ticker]}")
         logger.debug(f"[BT] SELL {pos.ticker} @ {price:.2f}  pnl={pnl_pct:.1f}%  reason={reason}")
         return pnl_pct
 
