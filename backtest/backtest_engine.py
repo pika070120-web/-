@@ -137,7 +137,8 @@ class VirtualPortfolio:
         self.trade_log: List[Dict[str, Any]] = []
         self.peak_value = initial_capital
         self._cooldown: Dict[str, date] = {}  # ticker → 재진입 금지 해제일
-
+        self._monthly_entries: Dict[str, int] = {}  # ticker → 이번달 진입 횟수
+        self._monthly_key: str = ""  # 현재 월 키 (YYYY-MM)
     @property
     def total_value(self) -> float:
         invested = sum(p.entry_price * p.shares for p in self.positions)
@@ -161,6 +162,14 @@ class VirtualPortfolio:
         # 쿨다운 체크
         cooldown_end = self._cooldown.get(ticker)
         if cooldown_end is not None and trade_date < cooldown_end:
+            return False
+
+        # 월별 종목당 최대 3회 진입 제한
+        month_key = trade_date.strftime("%Y-%m")
+        if month_key != self._monthly_key:
+            self._monthly_key = month_key
+            self._monthly_entries = {}
+        if self._monthly_entries.get(ticker, 0) >= 3:
             return False
 
         size_pct = (
@@ -191,6 +200,9 @@ class VirtualPortfolio:
             "shares": shares, "stop": stop,
             "entry_class": entry_class,
         })
+        # 월별 진입 횟수 카운트
+        month_key = trade_date.strftime("%Y-%m")
+        self._monthly_entries[ticker] = self._monthly_entries.get(ticker, 0) + 1
         logger.debug(f"[BT] BUY {ticker} @ {price:.2f}  stop={stop:.2f}")
         return True
 
@@ -212,7 +224,7 @@ class VirtualPortfolio:
             "hold_days": (trade_date - pos.entry_date).days,
         })
         # 큰 손실 발생 시 5일 쿨다운
-        if pnl_pct <= -12.0:
+        if pnl_pct <= -10.0:
             from datetime import timedelta
             self._cooldown[pos.ticker] = trade_date + timedelta(days=5)
             logger.debug(f"[BT] COOLDOWN {pos.ticker} until {self._cooldown[pos.ticker]}")
