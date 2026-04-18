@@ -175,6 +175,15 @@ class GateEvaluator:
 
         self.top_tier_n: int = stock_cfg["top_tier_threshold"]
 
+        bo = stock_cfg.get("breakout", {})
+        self._bo_cfg = {
+            "near_high_pct":            bo.get("near_high_pct", 2.0),
+            "vol_expand_factor":        bo.get("vol_expand_factor", 1.2),
+            "vol_lookback":             bo.get("vol_lookback", 5),
+            "premium_vol_expand_factor":bo.get("premium_vol_expand_factor", 1.5),
+            "premium_momentum_min_pct": bo.get("premium_momentum_min_pct", 2.0),
+        }
+
         self.daily_limit: float = risk_cfg["max_daily_loss_pct"] / 100
         self.weekly_limit: float = risk_cfg["max_weekly_loss_pct"] / 100
         self.monthly_limit: float = risk_cfg["max_monthly_loss_pct"] / 100
@@ -203,7 +212,9 @@ class GateEvaluator:
     ) -> Tuple[PullbackStructureGate, str, bool]:
         """
         System pre-filter for pullback structure.
-        Returns (preliminary_grade, notes, human_review_required).
+        두 가지 경로:
+          1. Pullback 경로: 3~15% 눌림 후 재강세
+          2. Breakout 경로: 신고가 근처(0~2%) + 거래량 동반
         FAIL = hard numeric failure; human cannot override this upward.
         """
         close = df["close"]
@@ -218,12 +229,11 @@ class GateEvaluator:
 
         drawdown_pct = (recent_high - current) / recent_high * 100
 
+        # ── Breakout 경로 ──────────────────────────────────────
         if drawdown_pct < self.min_pullback:
-            return (
-                PullbackStructureGate.FAIL,
-                f"Pullback too shallow: {drawdown_pct:.1f}% < min {self.min_pullback}%",
-                False,
-            )
+            return self._gate3_breakout(df, drawdown_pct, recent_high, current)
+
+        # ── Pullback 경로 ──────────────────────────────────────
         if drawdown_pct > self.max_pullback:
             return (
                 PullbackStructureGate.FAIL,
@@ -236,9 +246,66 @@ class GateEvaluator:
         prelim = PullbackStructureGate.PREMIUM_PASS if is_premium else PullbackStructureGate.PASS
 
         notes = (
-            f"Pullback {drawdown_pct:.1f}% from {self.pullback_high_window}-bar high "
+            f"[Pullback] {drawdown_pct:.1f}% from {self.pullback_high_window}-bar high "
             f"[{'PREMIUM' if is_premium else 'STANDARD'}, score={score}/3: "
             f"{', '.join(quality_notes) or 'basic range only'}]. "
+            f"⚠️ Human review required."
+        )
+        return prelim, notes, True
+
+    def _gate3_breakout(
+        self,
+        df: pd.DataFrame,
+        drawdown_pct: float,
+        recent_high: float,
+        current: float,
+    ) -> Tuple[PullbackStructureGate, str, bool]:
+        """
+        Breakout 경로: 신고가 근처 + 거래량 동반 확인
+        """
+        bo = self._bo_cfg
+
+        # 신고가 근처 아니면 탈락
+        if drawdown_pct > bo["near_high_pct"]:
+            return (
+                PullbackStructureGate.FAIL,
+                f"Pullback too shallow for pullback entry ({drawdown_pct:.1f}%) "
+                f"and not near high enough for breakout (>{bo['near_high_pct']}%)",
+                False,
+            )
+
+        # 거래량 확인
+        recent_vol = _safe_vol_mean(df, 0, bo["vol_lookback"])
+        prior_vol  = _safe_vol_mean(df, bo["vol_lookback"], self.pullback_high_window)
+
+        if prior_vol <= 0:
+            return (
+                PullbackStructureGate.FAIL,
+                f"Breakout: insufficient volume data",
+                False,
+            )
+
+        vol_ratio = recent_vol / prior_vol
+        if vol_ratio < bo["vol_expand_factor"]:
+            return (
+                PullbackStructureGate.FAIL,
+                f"Breakout: volume not expanding ({vol_ratio:.2f}x < {bo['vol_expand_factor']}x required)",
+                False,
+            )
+
+        # Premium 판단: 거래량 더 강하고 + 단기 모멘텀 확인
+        close = df["close"]
+        momentum_5 = float((close.iloc[-1] / close.iloc[-5] - 1) * 100) if len(close) >= 5 else 0.0
+        is_premium = (
+            vol_ratio >= bo["premium_vol_expand_factor"]
+            and momentum_5 >= bo["premium_momentum_min_pct"]
+        )
+        prelim = PullbackStructureGate.PREMIUM_PASS if is_premium else PullbackStructureGate.PASS
+
+        notes = (
+            f"[Breakout] {drawdown_pct:.1f}% from high (near new high), "
+            f"vol={vol_ratio:.2f}x, momentum={momentum_5:+.1f}% "
+            f"[{'PREMIUM' if is_premium else 'STANDARD'}]. "
             f"⚠️ Human review required."
         )
         return prelim, notes, True

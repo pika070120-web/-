@@ -25,6 +25,23 @@ STOCK_CONFIG = {
         "premium_tight_pullback_max_pct": 8.0,
         "premium_sma_proximity_pct": 3.0,
     },
+    "breakout": {
+        "lookback_for_high": 20,
+        "near_high_pct": 2.0,
+        "vol_expand_factor": 1.2,
+        "vol_lookback": 5,
+        "premium_vol_expand_factor": 1.5,
+        "premium_momentum_min_pct": 2.0,
+    },
+    "restrengthening": {
+        "signal_lookback": 5,
+        "momentum_threshold": 1.5,
+        "vol_lookback": 3,
+        "premium_score_min": 2,
+        "premium_momentum_threshold": 3.0,
+        "premium_vol_expand_factor": 1.2,
+        "premium_sma_reclaim_window": 10,
+    },
     "restrengthening": {
         "signal_lookback": 5,
         "momentum_threshold": 1.5,
@@ -43,6 +60,6 @@ RISK_CONFIG = {
     "max_risk_per_trade_pct": 0.5,
     "min_position_size_dollars": 500.0,
     "warning_buffer_pct": 0.8,
-    "stop_loss_atr_multiple": 2.0,
+    "stop_loss_atr_multiple": 1.5,
     "stop_loss_atr_period": 14,
 }

@@ -98,7 +98,7 @@ def get_trading_days(
     end_date: date,
 ) -> List[date]:
     """QQQ 기준 실제 거래일 목록 추출."""
-    ref = full_data.get("QQQ") or full_data.get("SPY")
+    ref = full_data.get("QQQ") if full_data.get("QQQ") is not None else full_data.get("SPY")
     if ref is None:
         return []
     days = [
@@ -108,7 +108,7 @@ def get_trading_days(
     return sorted(set(days))
 
 
-def compute_stop_loss(df: pd.DataFrame, atr_multiple: float = 2.0) -> Optional[float]:
+def compute_stop_loss(df: pd.DataFrame, atr_multiple: float = 1.5) -> Optional[float]:
     if df is None or len(df) < 15:
         return None
     high = df["high"]
@@ -239,6 +239,7 @@ class VirtualPortfolio:
         sliced: Dict[str, pd.DataFrame],
         market_filter: MarketFilterResult,
         trade_date: date,
+        atr_multiple: float = 1.5,
     ) -> List[str]:
         """
         FULL_EXIT 신호 종목 청산 → 빈 슬롯에 새 신호 진입.
@@ -255,8 +256,16 @@ class VirtualPortfolio:
                 continue
             close = float(df["close"].iloc[-1])
             pnl_pct = (close - pos.entry_price) / pos.entry_price * 100
-            if pnl_pct < -8.0:   # structure_break_pct
+            hold_days = (trade_date - pos.entry_date).days
+
+            if pnl_pct < -8.0:
                 self.close_position(pos, close, trade_date, "structure_break")
+                exited.append(pos.ticker)
+            elif pnl_pct >= 6.0:
+                self.close_position(pos, close, trade_date, "profit_target")
+                exited.append(pos.ticker)
+            elif hold_days >= 20:
+                self.close_position(pos, close, trade_date, "max_hold_days")
                 exited.append(pos.ticker)
             else:
                 still_holding.append(pos)
@@ -282,7 +291,7 @@ class VirtualPortfolio:
             if df is None or len(df) < 15:
                 continue
             price = float(df["close"].iloc[-1])
-            stop = compute_stop_loss(df) or price * 0.92
+            stop = compute_stop_loss(df, atr_multiple=atr_multiple) or price * 0.92
             ok = self.open_position(
                 ticker=c.ticker,
                 price=price,
@@ -311,6 +320,7 @@ class BacktestEngine:
         self.stock_engine = StockEngine(stock_cfg, risk_cfg)
         self.etf_engine = ETFEngine(market_cfg, risk_cfg)
         self.initial_capital = initial_capital
+        self._atr_multiple = risk_cfg.get("stop_loss_atr_multiple", 1.5)
 
     def run(
         self,
@@ -376,7 +386,7 @@ class BacktestEngine:
 
             # 손절 체크 → 신호 적용
             stop_exits = portfolio.check_stops(sliced, trade_date)
-            signal_changes = portfolio.apply_signals(candidates, sliced, mf, trade_date)
+            signal_changes = portfolio.apply_signals(candidates, sliced, mf, trade_date, atr_multiple=self._atr_multiple)
 
             total_val = portfolio.total_value
             daily_pnl = (total_val - prev_total) / prev_total * 100 if prev_total > 0 else 0.0
