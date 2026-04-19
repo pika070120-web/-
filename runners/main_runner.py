@@ -108,8 +108,21 @@ def main():
         positions=portfolio_manager.portfolio.positions,
     )
     import sys
+    from pathlib import Path
     sys.stdout.reconfigure(encoding='utf-8')
     print(report)
+
+    # 리포트 파일 저장
+    report_dir = Path("reports/daily")
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / f"report_{analysis_date}.txt"
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(f"[실행 파라미터]\n")
+        f.write(f"  수익목표    : +{EXECUTION_CFG['profit_target_pct']}%\n")
+        f.write(f"  최대보유일  : {EXECUTION_CFG['max_hold_days']}일\n")
+        f.write(f"  ATR손절배수 : {EXECUTION_CFG['atr_stop_multiple']}x\n\n")
+        f.write(report)
+    print(f"\n리포트 저장 완료: {report_path}")
 
 
 if __name__ == "__main__":
