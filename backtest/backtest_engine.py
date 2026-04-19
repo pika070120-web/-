@@ -263,7 +263,9 @@ class VirtualPortfolio:
         market_filter: MarketFilterResult,
         trade_date: date,
         atr_multiple: float = 1.5,
+        rs_map: Dict[str, float] = None,
     ) -> List[str]:
+        rs_map = rs_map or {}
         """
         FULL_EXIT 신호 종목 청산 → 빈 슬롯에 새 신호 진입.
         """
@@ -409,7 +411,8 @@ class BacktestEngine:
 
             # 손절 체크 → 신호 적용
             stop_exits = portfolio.check_stops(sliced, trade_date)
-            signal_changes = portfolio.apply_signals(candidates, sliced, mf, trade_date, atr_multiple=self._atr_multiple)
+            rs_map = {e["ticker"]: e["rs_score"] for e in weekly_pool.pool} if weekly_pool else {}
+            signal_changes = portfolio.apply_signals(candidates, sliced, mf, trade_date, atr_multiple=self._atr_multiple, rs_map=rs_map)
 
             total_val = portfolio.total_value
             daily_pnl = (total_val - prev_total) / prev_total * 100 if prev_total > 0 else 0.0
