@@ -286,7 +286,7 @@ class VirtualPortfolio:
             elif pnl_pct >= 6.5:
                 self.close_position(pos, close, trade_date, "profit_target")
                 exited.append(pos.ticker)
-            elif hold_days >= 20:
+            elif hold_days >= (30 if pos.entry_class == EntryClass.STRONG_ENTRY.value else 20):
                 self.close_position(pos, close, trade_date, "max_hold_days")
                 exited.append(pos.ticker)
             else:
