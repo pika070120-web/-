@@ -8,12 +8,12 @@ MARKET_CONFIG = {
 
 STOCK_CONFIG = {
     "main_lookback_days": 63,
-    "secondary_lookback_days": 21,
+    "secondary_lookback_days": 14,
     "main_weight": 0.7,
     "secondary_weight": 0.3,
     "strong_pool_size": 20,
     "eligible_pool_size": 10,
-    "top_tier_threshold": 5,
+    "top_tier_threshold": 6,
     "pool_refresh_weekday": 0,
     "pullback": {
         "min_pullback_pct": 3.0,
@@ -32,15 +32,6 @@ STOCK_CONFIG = {
         "vol_lookback": 5,
         "premium_vol_expand_factor": 1.5,
         "premium_momentum_min_pct": 2.0,
-    },
-    "restrengthening": {
-        "signal_lookback": 5,
-        "momentum_threshold": 1.5,
-        "vol_lookback": 3,
-        "premium_score_min": 2,
-        "premium_momentum_threshold": 3.0,
-        "premium_vol_expand_factor": 1.2,
-        "premium_sma_reclaim_window": 10,
     },
     "restrengthening": {
         "signal_lookback": 5,
