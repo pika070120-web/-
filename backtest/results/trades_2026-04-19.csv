@@ -108,8 +108,9 @@ date,ticker,pnl_pct,hold_days,reason
 2025-11-14,INTC,-7.81,4,stop_hit
 2025-11-19,INSM,11.37,15,profit_target
 2025-12-08,INSM,-5.04,14,stop_hit
-2025-12-15,GOOGL,-3.25,21,max_hold_days
+2025-12-08,LRCX,8.22,14,profit_target
 2025-12-15,GOOG,-2.87,21,max_hold_days
+2025-12-17,AMD,-10.4,9,stop_hit
 2025-12-24,MU,7.81,5,profit_target
 2026-01-02,WDC,6.44,21,max_hold_days
 2026-01-02,LRCX,7.42,14,profit_target
