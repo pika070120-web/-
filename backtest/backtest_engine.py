@@ -128,8 +128,8 @@ def compute_stop_loss(df: pd.DataFrame, atr_multiple: float = 1.5) -> Optional[f
 
 class VirtualPortfolio:
     MAX_POSITIONS = 3
-    POSITION_SIZE_PCT = 0.12   # 기본 10%
-    STRONG_SIZE_PCT   = 0.15   # 강한 진입 12%
+    POSITION_SIZE_PCT = 0.14   # 기본 10%
+    STRONG_SIZE_PCT   = 0.19   # 강한 진입 12%
 
     def __init__(self, initial_capital: float) -> None:
         self.capital = initial_capital
