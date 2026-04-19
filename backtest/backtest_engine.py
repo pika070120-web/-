@@ -39,6 +39,7 @@ class BTPosition:
     entry_date: date
     entry_class: str
     exposure_pct: float
+    highest_price: float = 0.0  # 트레일링 스탑용 최고가 추적
 
 
 # ── 백테스트 일일 결과 ─────────────────────────────────────────────────────────
