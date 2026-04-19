@@ -88,7 +88,17 @@ def main():
         account=account,
         analysis_date=analysis_date,
     )
-
+    
+    # 실행 파라미터 요약 출력
+    import sys
+    print("\n[실행 파라미터]")
+    print(f"  수익목표    : +{EXECUTION_CFG['profit_target_pct']}%")
+    print(f"  최대보유일  : {EXECUTION_CFG['max_hold_days']}일")
+    print(f"  ATR손절배수 : {EXECUTION_CFG['atr_stop_multiple']}x")
+    print(f"  쿨다운기준  : {EXECUTION_CFG['cooldown_loss_pct']}% 이상 손실")
+    print(f"  쿨다운기간  : {EXECUTION_CFG['cooldown_days']}일")
+    print(f"  월최대진입  : 종목당 {EXECUTION_CFG['max_monthly_entries']}회\n")
+    
     report = reporter.generate(
         market_filter=mf_result,
         stock_candidates=candidates,
