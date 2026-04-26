@@ -18,7 +18,7 @@ STOCK_CONFIG = {
     "pullback": {
         "min_pullback_pct": 3.0,
         "max_pullback_pct": 15.0,
-        "lookback_for_high": 20,
+        "lookback_for_high": 15,
         "vol_lookback": 5,
         "premium_score_min": 1,
         "premium_vol_decline_factor": 0.85,
@@ -26,7 +26,7 @@ STOCK_CONFIG = {
         "premium_sma_proximity_pct": 3.0,
     },
     "breakout": {
-        "lookback_for_high": 20,
+        "lookback_for_high": 15,
         "near_high_pct": 2.0,
         "vol_expand_factor": 1.2,
         "vol_lookback": 5,
