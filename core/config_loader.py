@@ -38,7 +38,7 @@ STOCK_CONFIG = {
         "momentum_threshold": 1.5,
         "vol_lookback": 3,
         "premium_score_min": 1,
-        "premium_momentum_threshold": 3.0,
+        "premium_momentum_threshold": 5.0,
         "premium_vol_expand_factor": 1.2,
         "premium_sma_reclaim_window": 10,
     },
