@@ -1,0 +1,35 @@
+name: Daily Swing System Run
+
+on:
+  schedule:
+    - cron: '0 22 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  run-system:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install yfinance pandas numpy schedule python-dotenv alpaca-trade-api
+
+      - name: Run main runner
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+        run: |
+          python -m runners.main_runner
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-report
+          path: reports/daily/
